@@ -147,6 +147,57 @@ def _render_import_agent():
                             st.rerun()
 
 
+def _render_categorie_section(
+    periode_df: pd.DataFrame, mask, titre: str, label: str, color_map: dict, key_prefix: str
+):
+    """Graphique + détail par catégorie, réutilisé pour les dépenses et les entrées."""
+    flux_cat = periode_df[mask].copy()
+    flux_cat["montant_abs"] = flux_cat["montant"].abs()
+    par_categorie = (
+        flux_cat.groupby("categorie")["montant_abs"]
+        .agg(montant="sum", transactions="count")
+        .sort_values("montant", ascending=False)
+        .reset_index()
+    )
+    total = par_categorie["montant"].sum()
+    par_categorie["part"] = (par_categorie["montant"] / total * 100) if total else 0
+
+    st.subheader(f"{titre} — {label}")
+    if par_categorie.empty:
+        st.info("Aucune transaction sur cette période.")
+        return
+
+    par_categorie["label"] = par_categorie.apply(
+        lambda r: f"{_fmt_eur(r['montant'])} · {r['part']:.0f} %", axis=1
+    )
+    fig = px.bar(
+        par_categorie,
+        x="montant",
+        y="categorie",
+        orientation="h",
+        color="categorie",
+        color_discrete_map=color_map,
+        text="label",
+        labels={"montant": "Montant (€)", "categorie": ""},
+    )
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(yaxis={"categoryorder": "total ascending"}, showlegend=False)
+    apply_layout_defaults(fig)
+    st.plotly_chart(fig, width="stretch", key=f"{key_prefix}_chart")
+
+    st.subheader("Détail des transactions par catégorie")
+    categorie_choisie = st.selectbox(
+        "Catégorie",
+        par_categorie["categorie"].tolist(),
+        format_func=lambda c: f"{c} ({_fmt_eur(par_categorie.loc[par_categorie['categorie'] == c, 'montant'].iloc[0])})",
+        key=f"{key_prefix}_categorie_select",
+    )
+    detail = flux_cat[flux_cat["categorie"] == categorie_choisie][
+        ["date", "libelle", "montant", "source_fichier"]
+    ].sort_values("date", ascending=False)
+    st.dataframe(detail, hide_index=True, width="stretch", key=f"{key_prefix}_detail_table")
+
+
 def render():
     st.header("💶 Finances")
 
@@ -230,50 +281,11 @@ def render():
 
     st.divider()
 
-    # --- Répartition par catégorie (couleurs stables, quelle que soit la période) ---
-    depenses_cat = periode_df[periode_df["montant"] < 0].copy()
-    depenses_cat["montant_abs"] = depenses_cat["montant"].abs()
-    par_categorie = (
-        depenses_cat.groupby("categorie")["montant_abs"]
-        .agg(montant="sum", transactions="count")
-        .sort_values("montant", ascending=False)
-        .reset_index()
-    )
-    total_depenses_cat = par_categorie["montant"].sum()
-    par_categorie["part"] = (par_categorie["montant"] / total_depenses_cat * 100) if total_depenses_cat else 0
+    _render_categorie_section(periode_df, periode_df["montant"] < 0, "Répartition des dépenses", label, color_map, "dep")
 
-    st.subheader(f"Répartition par catégorie — {label}")
-    if par_categorie.empty:
-        st.info("Aucune dépense sur cette période.")
-    else:
-        par_categorie["label"] = par_categorie.apply(
-            lambda r: f"{_fmt_eur(r['montant'])} · {r['part']:.0f} %", axis=1
-        )
-        fig = px.bar(
-            par_categorie,
-            x="montant",
-            y="categorie",
-            orientation="h",
-            color="categorie",
-            color_discrete_map=color_map,
-            text="label",
-            labels={"montant": "Montant (€)", "categorie": ""},
-        )
-        fig.update_traces(textposition="outside", cliponaxis=False)
-        fig.update_layout(yaxis={"categoryorder": "total ascending"}, showlegend=False)
-        apply_layout_defaults(fig)
-        st.plotly_chart(fig, width="stretch")
+    st.divider()
 
-        st.subheader("Détail des transactions par catégorie")
-        categorie_choisie = st.selectbox(
-            "Catégorie",
-            par_categorie["categorie"].tolist(),
-            format_func=lambda c: f"{c} ({_fmt_eur(par_categorie.loc[par_categorie['categorie'] == c, 'montant'].iloc[0])})",
-        )
-        detail = depenses_cat[depenses_cat["categorie"] == categorie_choisie][
-            ["date", "libelle", "montant", "source_fichier"]
-        ].sort_values("date", ascending=False)
-        st.dataframe(detail, hide_index=True, width="stretch")
+    _render_categorie_section(periode_df, periode_df["montant"] > 0, "Répartition des entrées", label, color_map, "ent")
 
     st.divider()
 
@@ -304,7 +316,7 @@ def render():
     st.divider()
 
     st.subheader(f"⚠️ Dépenses non catégorisées — {label}")
-    non_categorisees = depenses_cat[depenses_cat["categorie"] == NON_CATEGORISE][
+    non_categorisees = periode_df[(depenses_mask) & (periode_df["categorie"] == NON_CATEGORISE)][
         ["date", "libelle", "montant", "source_fichier"]
     ].sort_values("date", ascending=False)
 

@@ -28,7 +28,7 @@ Restauration:
 - sodexo
 Transport:
 - sncf
-- uber
+- "uber *"
 - essence
 - total energies
 - ratp
@@ -82,6 +82,7 @@ Loisirs et sport:
 - olympique lyon
 - parc ol
 - royal spa
+- urbansoccer
 Shopping:
 - aliexpress
 - amazon.fr
@@ -92,6 +93,7 @@ Shopping:
 - relay
 Logement et assurances:
 - loyer
+- flatmates
 - edf
 - engie
 - veolia
@@ -111,6 +113,16 @@ Santé:
 Épargne:
 - "pour: augustin paget"
 - "pour: m. augustin paget"
+
+Reprise épargne:
+- "de: augustin paget"
+- "de: m. augustin paget"
+
+Salaire:
+- marso robotics
+- station f
+- profil
+- "de: cafe du pond"
 
 Emprunt:
 - mensualite pret

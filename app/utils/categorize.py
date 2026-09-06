@@ -9,7 +9,9 @@ import yaml
 from app.utils.viz import CATEGORICAL, FLOW_COLORS, NEUTRAL_UNCATEGORIZED
 
 NON_CATEGORISE = "Non catégorisé"
-VIREMENT_RECU = "Virement reçu"
+# Virement reçu générique (tiers ou WERO) sans règle plus spécifique (Salaire,
+# Reprise épargne...) qui ait matché avant — cf. category_rules.yaml.
+VIREMENT_RECU = "Remboursements"
 VIREMENT_ENVOYE = "Virement envoyé"
 
 # Libellés génériques de virement (ni un vrai commerce, ni une vraie catégorie de
