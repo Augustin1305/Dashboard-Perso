@@ -1,0 +1,134 @@
+# Règles de catégorisation automatique des dépenses par mots-clés (en minuscules).
+# Ordre important : la 1ère catégorie dont un mot-clé matche le libellé est retenue.
+# Gérable depuis l'app (page 🏷️ Catégories), ou éditable ici à la main.
+
+Alimentation:
+- carrefour
+- monoprix
+- monop
+- boulangerie
+- franprix
+- lidl
+- picard
+- naturalia
+- auchan
+- leclerc
+- intermarche
+- casino
+Restauration:
+- mcdonald
+- mc donald
+- burger king
+- kfc
+- starbucks
+- sushi
+- pizza
+- brasserie
+- bistrot
+- sodexo
+Transport:
+- sncf
+- uber
+- essence
+- total energies
+- ratp
+- navigo
+- blablacar
+- velib
+- imagine r
+- tcl
+- ouigo
+- flixbus
+- idtgvmax
+- max jeune
+- enterprise rent a car
+- enterprise holdings
+- hertz
+- europcar
+- sixt
+- areas
+Abonnements:
+- netflix
+- spotify
+- amazon prime
+- disney+
+- deezer
+- free mobile
+- orange
+- sfr
+- bouygues
+- chatgpt
+- openai
+- canal+
+- icloud
+- youtube premium
+- sobrio
+- anthropic
+- claude sub
+- textguard
+Loisirs et sport:
+- cinema
+- fnac
+- steam
+- theatre
+- concert
+- decathlon
+- basic fit
+- neoness
+- ucpa
+- fitness park
+- club 24
+- sport ticketing
+- olympique lyon
+- parc ol
+- royal spa
+Shopping:
+- aliexpress
+- amazon.fr
+- darty
+- shein
+- cdiscount
+- ikea
+- relay
+Logement et assurances:
+- loyer
+- edf
+- engie
+- veolia
+- assurance habitation
+- foncia
+- macif
+- maif
+- axa
+- allianz
+- matmut
+- groupama
+Santé:
+- pharmacie
+- medecin
+- dentiste
+- mutuelle
+Épargne:
+- "pour: augustin paget"
+- "pour: m. augustin paget"
+
+Emprunt:
+- mensualite pret
+- remboursement pret
+- pret etudiant
+- credit conso
+- credit immobilier
+- sogefinanc
+- franfinance
+Frais bancaires:
+- commission d'intervention
+- frais de tenue de compte
+- cotisation carte
+Espèces (GAB):
+- vrst gab
+- retrait gab
+- retrait dab
+
+# Les libellés de virement généraux (vir recu, vir instantane emis...) ne sont pas
+# des mots-clés ici : ils sont reconnus automatiquement dans categorize.py, qui les
+# classe en "Virement reçu" ou "Virement envoyé" selon le signe du montant.

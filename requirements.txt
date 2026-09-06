@@ -1,0 +1,8 @@
+streamlit
+pandas
+plotly
+icalendar
+pyyaml
+python-dateutil
+openai
+python-dotenv
