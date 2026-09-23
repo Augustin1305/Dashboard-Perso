@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 import io
-import math
 import textwrap
 
 from PIL import Image, ImageDraw, ImageFont
 
-from app.utils.categories import color_for
+from app.utils.categories import ressenti_color, ressenti_label
+from app.utils.theme import ACCENT
 
 CARD_SIZE = (1080, 1350)
 BANNER_HEIGHT = 260
@@ -47,25 +47,20 @@ def _shorten_address(adresse: str, titre: str, max_parts: int = 3) -> str:
     return ", ".join(parts[:max_parts])
 
 
-def _draw_star(draw: ImageDraw.ImageDraw, cx: float, cy: float, r_outer: float, filled: bool, color: str):
-    r_inner = r_outer * 0.42
-    points = []
-    for i in range(10):
-        angle = -math.pi / 2 + i * math.pi / 5
-        r = r_outer if i % 2 == 0 else r_inner
-        points.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
-    if filled:
-        draw.polygon(points, fill=color)
+def _draw_ressenti_badge(draw: ImageDraw.ImageDraw, x: int, y: int, vecu: bool, ressenti: str | None,
+                          font, radius: int = 20) -> int:
+    """Dessine la pastille Vécu/Envie (cercle plein pour un ressenti, contour
+    seul pour Envie) suivie de son libellé. Retourne le y après la pastille."""
+    cx, cy = x + radius, y + radius
+    if vecu and ressenti:
+        color = ressenti_color(ressenti)
+        draw.ellipse([x, y, x + 2 * radius, y + 2 * radius], fill=color)
+        label = ressenti_label(ressenti)
     else:
-        draw.polygon(points, outline=color, width=3)
-
-
-def _draw_stars(draw: ImageDraw.ImageDraw, x: int, y: int, note: int, total: int = 5,
-                 radius: int = 22, gap: int = 18, color: str = "#F4A261"):
-    cx = x + radius
-    for i in range(total):
-        _draw_star(draw, cx, y + radius, radius, filled=i < note, color=color)
-        cx += 2 * radius + gap
+        draw.ellipse([x, y, x + 2 * radius, y + 2 * radius], outline="#9AA5B1", width=3)
+        label = "Envie — pas encore testé"
+    draw.text((x + 2 * radius + 16, cy), label, font=font, fill="#333333", anchor="lm")
+    return y + 2 * radius
 
 
 def _wrap_and_draw(draw: ImageDraw.ImageDraw, text: str, font, x: int, y: int, max_width: int,
@@ -95,19 +90,19 @@ def _wrap_and_draw(draw: ImageDraw.ImageDraw, text: str, font, x: int, y: int, m
 
 
 def generate_share_card(entry: dict) -> bytes:
-    """Construit une fiche PNG à partir d'une découverte (dict issu du DataFrame).
+    """Construit une fiche PNG à partir d'un rep'r (dict issu du DataFrame).
 
-    Champs attendus : titre, categorie, adresse, note, commentaire, statut.
+    Champs attendus : titre, categorie, adresse, vecu, ressenti, commentaire.
     Retourne les octets PNG, prêts pour st.image / st.download_button.
     """
     categorie = entry.get("categorie") or "Autre lieu"
-    accent = color_for(categorie)
 
     img = Image.new("RGB", CARD_SIZE, "#FFFFFF")
     draw = ImageDraw.Draw(img)
 
-    # Bannière colorée avec la catégorie
-    draw.rectangle([0, 0, CARD_SIZE[0], BANNER_HEIGHT], fill=accent)
+    # Bannière à la couleur du carnet Rep'r (une seule couleur pour tous les
+    # lieux, la charte réserve les couleurs au ressenti, pas à la catégorie)
+    draw.rectangle([0, 0, CARD_SIZE[0], BANNER_HEIGHT], fill=ACCENT)
     category_font = _load_font(_BOLD_CANDIDATES, 40)
     draw.text((MARGIN, BANNER_HEIGHT / 2 - 24), categorie.upper(), font=category_font, fill="#FFFFFF")
 
@@ -128,21 +123,11 @@ def generate_share_card(entry: dict) -> bytes:
                                 CARD_SIZE[0] - 2 * MARGIN, fill="#555555", max_lines=2)
             y += 20
 
-    note = entry.get("note")
-    is_nan = isinstance(note, float) and note != note  # NaN != NaN
-    try:
-        note_val = 0 if note in (None, "") or is_nan else int(note)
-    except (TypeError, ValueError):
-        note_val = 0
-    if note_val > 0:
-        _draw_stars(draw, MARGIN, y, note_val)
-        y += 70
-
-    statut = entry.get("statut")
-    if isinstance(statut, str) and statut.strip():
-        statut_font = _load_font(_REGULAR_CANDIDATES, 30)
-        draw.text((MARGIN, y), f"Statut : {statut}", font=statut_font, fill="#777777")
-        y += 60
+    badge_font = _load_font(_REGULAR_CANDIDATES, 34)
+    vecu = bool(entry.get("vecu"))
+    ressenti = entry.get("ressenti") if isinstance(entry.get("ressenti"), str) else None
+    y = _draw_ressenti_badge(draw, MARGIN, y, vecu, ressenti, badge_font)
+    y += 60
 
     commentaire = entry.get("commentaire")
     if isinstance(commentaire, str) and commentaire.strip():
@@ -160,7 +145,7 @@ def generate_share_card(entry: dict) -> bytes:
     draw = ImageDraw.Draw(img)
 
     footer_font = _load_font(_REGULAR_CANDIDATES, 26)
-    footer_text = "Mon carnet de découvertes"
+    footer_text = "Rep'r"
     fw = draw.textlength(footer_text, font=footer_font)
     draw.text((CARD_SIZE[0] - MARGIN - fw, final_height - 60), footer_text, font=footer_font, fill="#AAAAAA")
 

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rep'r — Vue carnet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 844px; overflow: hidden; background: {{t.bg}}; font-family: Inter, system-ui, sans-serif; color: {{t.ink}}">
+
+<div style="position: absolute; left: 16px; right: 16px; top: 54px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<a href="{{L.hub}}" aria-label="Rep'r — mes carnets" style="display: inline-flex; align-items: flex-start; font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 26px; line-height: 1; letter-spacing: -0.02em; color: {{t.ink}}">Rep<svg width="10" height="13" viewBox="0 0 24 30" style="margin: 1px 1px 0 2px" aria-hidden="true"><path d="M12 1.5C6.2 1.5 1.5 6.1 1.5 11.8 1.5 19.3 12 28.5 12 28.5S22.5 19.3 22.5 11.8C22.5 6.1 17.8 1.5 12 1.5Z" fill="#E4572E"/><circle cx="12" cy="11.5" r="4" fill="{{t.bg}}"/></svg>r</a>
+<div style="display: flex; padding: 4px; background: {{t.surface}}; border-radius: 999px; border: 1px solid {{t.line}}">
+<a href="{{L.carte}}" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; color: {{t.muted}}; font-size: 13px; font-weight: 500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>Carte</a>
+<a href="{{L.carnet}}" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: {{t.btn}}; color: {{t.btnText}}; font-size: 13px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Carnet</a>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 28px; letter-spacing: -0.015em">Mon carnet</h1>
+<span style="font-size: 13px; color: {{t.muted}}">128 rep'rs · 94 vécus · 34 envies</span>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: {{t.btn}}; color: {{t.btnText}}; font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 600">Tout</button>
+<button type="button" style="height: 36px; padding: 0 14px; border: 1px solid {{t.line}}; border-radius: 999px; background: {{t.surface}}; color: {{t.ink}}; font-family: Inter, system-ui, sans-serif; font-size: 13px">Vécu</button>
+<button type="button" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid {{t.line}}; border-radius: 999px; background: {{t.surface}}; color: {{t.ink}}; font-family: Inter, system-ui, sans-serif; font-size: 13px"><span style="width: 10px; height: 10px; border-radius: 999px; border: 1.5px dashed currentColor; box-sizing: border-box"></span>Envie</button>
+<button type="button" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid {{t.line}}; border-radius: 999px; background: {{t.surface}}; color: {{t.ink}}; font-family: Inter, system-ui, sans-serif; font-size: 13px; white-space: nowrap"><span style="width: 10px; height: 10px; border-radius: 999px; background: #E4572E"></span>Cœur</button>
+</div>
+</div>
+
+<div style="position: absolute; left: 16px; right: 16px; top: 262px; display: flex; flex-direction: column; gap: 16px">
+<sc-for list="{{months}}" as="mo" hint-placeholder-count="2">
+<section style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 8px; border-bottom: 1px solid {{t.line}}">
+<h2 style="margin: 0; font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 17px">{{mo.name}}</h2>
+<span style="font-size: 13px; color: {{t.muted}}">{{mo.count}}</span>
+</div>
+<sc-for list="{{mo.items}}" as="e" hint-placeholder-count="3">
+<a href="{{L.fiche}}" style="display: flex; gap: 12px; align-items: stretch">
+<div style="width: 40px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; padding-top: 12px">
+<span style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 22px; line-height: 1">{{e.day}}</span>
+<span style="font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: {{t.muted}}; margin-top: 4px">{{e.wd}}</span>
+</div>
+<div style="flex-grow: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; background: {{t.surface}}; border-radius: 16px; border: 1px solid {{t.line}}">
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">{{e.name}}</span>
+<span style="font-family: Fraunces, Georgia, serif; font-style: italic; font-size: 15px; line-height: 1.35; color: {{t.ink}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{e.note}}</span>
+<span style="font-size: 13px; color: {{t.muted}}">{{e.meta}}</span>
+</div>
+<div aria-label="{{e.mood}}" style="width: 52px; height: 52px; flex-shrink: 0; box-sizing: border-box; border-radius: 999px; border: 1.5px solid {{e.c}}; display: flex; align-items: center; justify-content: center; transform: rotate({{e.rot}}deg)">
+<div style="width: 42px; height: 42px; box-sizing: border-box; border-radius: 999px; border: 1px dashed {{e.c}}; display: flex; align-items: center; justify-content: center">
+<svg width="16" height="20" viewBox="0 0 24 30" aria-hidden="true"><path d="M12 1.5C6.2 1.5 1.5 6.1 1.5 11.8 1.5 19.3 12 28.5 12 28.5S22.5 19.3 22.5 11.8C22.5 6.1 17.8 1.5 12 1.5Z" fill="{{e.c}}"/><circle cx="12" cy="11.6" r="3.4" fill="{{t.surface}}"/></svg>
+</div>
+</div>
+</div>
+</a>
+</sc-for>
+</section>
+</sc-for>
+</div>
+
+<a href="{{L.ajout}}" style="position: absolute; right: 16px; bottom: 34px; display: flex; align-items: center; gap: 10px; height: 60px; padding: 0 22px 0 14px; border-radius: 999px; background: {{t.btn}}; color: {{t.btnText}}; box-shadow: 0 8px 24px rgba(29,36,38,0.22); font-size: 17px; font-weight: 600">
+<span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: #E4572E; color: #FFFFFF"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></span>
+Poser un rep'r</a>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const T = {
+      light:{bg:'#F6F3EC',surface:'#FFFFFF',ink:'#1D2426',muted:'#6E6A63',line:'#E6E1D6',btn:'#1D2426',btnText:'#F6F3EC'},
+      dark:{bg:'#141718',surface:'#1E2224',ink:'#F1EDE4',muted:'#A39E95',line:'#2E3336',btn:'#F1EDE4',btnText:'#141718'}
+    };
+    const t = dark ? T.dark : T.light;
+    const s = dark ? 'Sombre' : '';
+    const L = { carte:'Main'+s+'.dc.html', carnet:'Carnet'+s+'.dc.html', fiche:'Fiche'+s+'.dc.html', ajout:'Ajout'+s+'.dc.html', hub:'Hub'+s+'.dc.html' };
+    const M = { coeur:['#E4572E','Coup de cœur'], tb:['#F2A541','Très bien'], ok:['#8FB9A8','Correct'], bof:['#9AA5B1','Bof'], ev:['#5B5F66','À éviter'] };
+    const e = (day, wd, name, note, meta, k, rot) => ({ day, wd, name, note, meta, c: M[k][0], mood: M[k][1], rot });
+    const months = [
+      { name: 'Septembre 2026', count: '3 sorties', items: [
+        e('18', 'jeu.', 'Café des Écluses', 'Flat white parfait, terrasse au soleil.', 'Paris 10ᵉ · midi rapide', 'tb', -6),
+        e('14', 'dim.', 'Chez Odette', 'Le meilleur œuf mayo de ma vie.', 'Paris 10ᵉ · en amoureux', 'coeur', 5),
+        e('09', 'mar.', 'La Petite Tonnelle', 'Bruyant, service très long.', 'Paris 11ᵉ · avec les parents', 'bof', -3)
+      ]},
+      { name: 'Août 2026', count: '5 sorties', items: [
+        e('28', 'ven.', 'Boulangerie Mireille', 'Le flan. Rien d’autre à dire.', 'Paris 10ᵉ · midi rapide', 'coeur', 4)
+      ]}
+    ];
+    return { t, L, months };
+  }
+}
+</script>
+</body>
+</html>

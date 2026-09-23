@@ -1,7 +1,7 @@
-"""Catégories communes au carnet de découvertes (lieux physiques et médias)."""
+"""Catégories de lieux et échelle de ressenti du carnet Rep'r."""
 from __future__ import annotations
 
-PLACE_CATEGORIES = [
+CATEGORIES = [
     "Restaurant",
     "Café",
     "Bar",
@@ -15,10 +15,6 @@ PLACE_CATEGORIES = [
     "Autre lieu",
 ]
 
-MEDIA_CATEGORIES = ["Livre", "Film"]
-
-ALL_CATEGORIES = PLACE_CATEGORIES + MEDIA_CATEGORIES
-
 CATEGORY_ICONS = {
     "Restaurant": "🍽️",
     "Café": "☕",
@@ -31,37 +27,46 @@ CATEGORY_ICONS = {
     "Parc": "🌳",
     "Boutique": "🛍️",
     "Autre lieu": "📍",
-    "Livre": "📖",
-    "Film": "🎞️",
 }
 
-# Couleurs d'accent par catégorie, réutilisées à l'écran et dans les fiches partagées.
-CATEGORY_COLORS = {
-    "Restaurant": "#E76F51",
-    "Café": "#B08968",
-    "Bar": "#9D4EDD",
-    "Bar à vin": "#6A040F",
-    "Cinéma": "#264653",
-    "Théâtre": "#7B2CBF",
-    "Musée": "#457B9D",
-    "Hôtel": "#2A9D8F",
-    "Parc": "#588157",
-    "Boutique": "#E9C46A",
-    "Autre lieu": "#495057",
-    "Livre": "#3A5A40",
-    "Film": "#1D3557",
+# Échelle de ressenti (uniquement pour les rep'rs "Vécu") : ordre et couleurs
+# repris de la charte Rep'r.
+RESSENTIS = [
+    {"id": "coeur", "label": "Coup de cœur", "color": "#E4572E"},
+    {"id": "tb", "label": "Très bien", "color": "#F2A541"},
+    {"id": "ok", "label": "Correct", "color": "#8FB9A8"},
+    {"id": "bof", "label": "Bof", "color": "#9AA5B1"},
+    {"id": "ev", "label": "À éviter", "color": "#5B5F66"},
+]
+RESSENTI_IDS = [r["id"] for r in RESSENTIS]
+RESSENTI_BY_ID = {r["id"]: r for r in RESSENTIS}
+
+# Un st.pills ne peut pas être coloré nativement : on approxime la teinte de
+# chaque ressenti avec un émoji, pour garder un repère visuel dans le picker.
+RESSENTI_EMOJI = {
+    "coeur": "🧡",
+    "tb": "🟡",
+    "ok": "🟢",
+    "bof": "⚪",
+    "ev": "⚫",
 }
-
-STATUTS = ["à découvrir", "en cours", "fait"]
-
-
-def is_place(categorie: str) -> bool:
-    return categorie in PLACE_CATEGORIES
 
 
 def icon_for(categorie: str) -> str:
     return CATEGORY_ICONS.get(categorie, "📍")
 
 
-def color_for(categorie: str) -> str:
-    return CATEGORY_COLORS.get(categorie, "#495057")
+def ressenti_label(ressenti_id: str | None) -> str:
+    if not ressenti_id:
+        return ""
+    return RESSENTI_BY_ID.get(ressenti_id, {}).get("label", "")
+
+
+def ressenti_color(ressenti_id: str | None) -> str:
+    if not ressenti_id:
+        return "#9AA5B1"
+    return RESSENTI_BY_ID.get(ressenti_id, {}).get("color", "#9AA5B1")
+
+
+def ressenti_pill_label(ressenti_id: str) -> str:
+    return f"{RESSENTI_EMOJI.get(ressenti_id, '')} {ressenti_label(ressenti_id)}".strip()

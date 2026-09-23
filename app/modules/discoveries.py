@@ -1,87 +1,141 @@
-"""Module Mes découvertes : carnet de lieux (restaurants, cafés, musées...) et de
-médias (livres, films), avec recherche d'adresse automatique et fiches partageables.
+"""Module Rep'r : carnet d'adresses personnel (restaurants, cafés, musées...),
+avec recherche d'adresse automatique, ressenti coloré, fiches partageables en
+image et envoi d'une fiche à un autre utilisateur de l'app.
 """
 from __future__ import annotations
 
 import re
 from datetime import date
+from urllib.parse import quote_plus
 
 import pandas as pd
 import streamlit as st
 
-from app.utils import ai_chat, geocoding, share_card
+from app.utils import db, geocoding, share_card, theme
 from app.utils.categories import (
-    ALL_CATEGORIES,
-    MEDIA_CATEGORIES,
-    PLACE_CATEGORIES,
-    STATUTS,
+    CATEGORIES,
+    RESSENTI_IDS,
     icon_for,
-    is_place,
+    ressenti_color,
+    ressenti_label,
+    ressenti_pill_label,
 )
-from app.utils.parsers import (
-    append_discovery_entry,
-    delete_discovery_entry,
-    migrate_legacy_media_log,
-    parse_discoveries,
-    update_discovery_entry,
-)
-
-DISCOVERIES_PATH = "data/decouvertes.csv"
-LEGACY_MEDIA_PATH = "data/media_log.csv"
 
 _MANUAL_ADDRESS_OPTION = "✏️ Aucun ne correspond — je saisis l'adresse moi-même"
 
 
 def _safe_filename(titre: str) -> str:
-    return re.sub(r"[^\w\-. ]", "_", titre).strip() or "decouverte"
+    return re.sub(r"[^\w\-. ]", "_", titre).strip() or "repr"
 
 
-def _render_add_form(df: pd.DataFrame):
-    with st.expander("➕ Ajouter une découverte", expanded=df.empty):
+def _maps_url(adresse: str | None, lat=None, lon=None) -> str | None:
+    """Lien Google Maps cliquable : coordonnées précises si on les a, sinon
+    une recherche texte sur l'adresse (fonctionne même sans géocodage)."""
+    if lat is not None and lon is not None and pd.notna(lat) and pd.notna(lon):
+        return f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+    if isinstance(adresse, str) and adresse.strip():
+        return f"https://www.google.com/maps/search/?api=1&query={quote_plus(adresse.strip())}"
+    return None
+
+
+def _ressenti_badge_html(vecu: bool, ressenti: str | None) -> str:
+    if vecu and ressenti:
+        return theme.render_ressenti_badge(ressenti_color(ressenti), ressenti_label(ressenti))
+    return theme.render_ressenti_badge(theme.MUTED, "Envie — pas encore testé", dashed=True)
+
+
+def _render_inbox(user: dict):
+    inbox = db.fetch_inbox(user["id"])
+    if not inbox:
+        return
+
+    st.subheader("📥 Rep'rs reçus")
+    for share in inbox:
+        snapshot = share.get("snapshot") or {}
+        categorie = snapshot.get("categorie") or "Autre lieu"
+        with st.container(border=True):
+            st.markdown(f"#### {icon_for(categorie)} {snapshot.get('titre') or 'Sans titre'}")
+            st.caption(f"Envoyé par {share['from_email']}")
+
+            adresse = snapshot.get("adresse")
+            if isinstance(adresse, str) and adresse.strip():
+                st.markdown(f"{icon_for(categorie)} [{adresse}]({_maps_url(adresse, snapshot.get('lat'), snapshot.get('lon'))})")
+
+            st.markdown(_ressenti_badge_html(bool(snapshot.get("vecu")), snapshot.get("ressenti")), unsafe_allow_html=True)
+
+            if snapshot.get("commentaire"):
+                st.write(snapshot["commentaire"])
+
+            c1, c2 = st.columns(2)
+            if c1.button("➕ Ajouter à mes rep'rs", key=f"accept_{share['id']}"):
+                db.respond_to_share(share["id"], True, user["id"], share["from_email"], snapshot)
+                st.success(f"« {snapshot.get('titre')} » ajouté à tes rep'rs !")
+                st.rerun()
+            if c2.button("🗑️ Ignorer", key=f"dismiss_{share['id']}"):
+                db.respond_to_share(share["id"], False, user["id"], share["from_email"], snapshot)
+                st.rerun()
+
+    st.divider()
+
+
+def _render_add_form(user: dict, df: pd.DataFrame):
+    with st.expander("📍 Poser un rep'r", expanded=df.empty):
         col1, col2 = st.columns([3, 2])
         nom = col1.text_input(
             "Nom",
             key="disc_nom",
-            placeholder="Ex: Le Comptoir du Relais, Dune, Le Fabuleux Destin d'Amélie Poulain…",
+            placeholder="Ex: Chez Odette, Le Comptoir du Relais…",
         )
         categorie = col2.selectbox(
-            "Catégorie", ALL_CATEGORIES, key="disc_categorie", format_func=lambda c: f"{icon_for(c)} {c}"
+            "Catégorie", CATEGORIES, key="disc_categorie", format_func=lambda c: f"{icon_for(c)} {c}"
         )
 
         adresse, lat, lon = "", None, None
 
-        if is_place(categorie):
-            st.caption("Cherche l'adresse automatiquement à partir du nom, ou saisis-la toi-même.")
-            search_col, btn_col = st.columns([4, 1])
-            if btn_col.button("🔍 Chercher l'adresse", disabled=not nom.strip(), key="disc_search_btn"):
-                st.session_state["disc_results"] = geocoding.search_places(nom)
-                st.session_state["disc_searched_for"] = nom
+        st.caption("Cherche l'adresse automatiquement à partir du nom, ou saisis-la toi-même.")
+        search_col, btn_col = st.columns([4, 1])
+        if btn_col.button("🔍 Chercher l'adresse", disabled=not nom.strip(), key="disc_search_btn"):
+            st.session_state["disc_results"] = geocoding.search_places(nom)
+            st.session_state["disc_searched_for"] = nom
 
-            results = st.session_state.get("disc_results", [])
-            if results:
-                options = [r["label"] for r in results] + [_MANUAL_ADDRESS_OPTION]
-                choice = search_col.selectbox("Résultat trouvé", options, key="disc_choice")
-                if choice != _MANUAL_ADDRESS_OPTION:
-                    selected = next(r for r in results if r["label"] == choice)
-                    adresse, lat, lon = selected["adresse"], selected["lat"], selected["lon"]
-            elif st.session_state.get("disc_searched_for") == nom and nom.strip():
-                search_col.caption("Aucun résultat — saisis l'adresse manuellement ci-dessous.")
+        results = st.session_state.get("disc_results", [])
+        if results:
+            options = [r["label"] for r in results] + [_MANUAL_ADDRESS_OPTION]
+            choice = search_col.selectbox("Résultat trouvé", options, key="disc_choice")
+            if choice != _MANUAL_ADDRESS_OPTION:
+                selected = next(r for r in results if r["label"] == choice)
+                adresse, lat, lon = selected["adresse"], selected["lat"], selected["lon"]
+        elif st.session_state.get("disc_searched_for") == nom and nom.strip():
+            search_col.caption("Aucun résultat — saisis l'adresse manuellement ci-dessous.")
 
-            if not adresse:
-                adresse = st.text_input("Adresse (optionnelle si non trouvée)", key="disc_adresse_manuelle")
+        if not adresse:
+            adresse = st.text_input("Adresse (optionnelle si non trouvée)", key="disc_adresse_manuelle")
 
-        c1, c2, c3 = st.columns(3)
-        entry_date = c1.date_input("Date", value=date.today(), key="disc_date")
-        statut = c2.selectbox("Statut", STATUTS, index=0, key="disc_statut")
-        note = c3.slider("Note (/5)", min_value=0, max_value=5, value=0, key="disc_note")
-        commentaire = st.text_area("Commentaire", height=80, key="disc_commentaire")
+        if isinstance(adresse, str) and adresse.strip():
+            st.markdown(f"{icon_for(categorie)} [{adresse}]({_maps_url(adresse, lat, lon)})")
 
-        if st.button("Ajouter", type="primary", key="disc_submit"):
+        mode = st.segmented_control("Statut", ["Vécu", "Envie"], default="Vécu", key="disc_mode")
+        vecu = mode == "Vécu"
+
+        ressenti = None
+        if vecu:
+            st.caption("Ton ressenti")
+            ressenti = st.pills(
+                "Ressenti", RESSENTI_IDS, format_func=ressenti_pill_label,
+                default="coeur", key="disc_ressenti", label_visibility="collapsed",
+            )
+        else:
+            st.caption("Pas encore testé : tu noteras ton ressenti après.")
+
+        commentaire = st.text_input("Une ligne pour t'en souvenir", key="disc_commentaire")
+        entry_date = st.date_input("Date", value=date.today(), key="disc_date")
+
+        if st.button("Enregistrer", type="primary", key="disc_submit"):
             if not nom.strip():
                 st.error("Le nom est obligatoire.")
             else:
-                append_discovery_entry(
-                    DISCOVERIES_PATH,
+                db.insert_discovery(
+                    user["id"],
                     {
                         "date": entry_date.isoformat(),
                         "categorie": categorie,
@@ -89,8 +143,8 @@ def _render_add_form(df: pd.DataFrame):
                         "adresse": adresse.strip() if isinstance(adresse, str) else "",
                         "lat": lat,
                         "lon": lon,
-                        "statut": statut,
-                        "note": note if note > 0 else "",
+                        "vecu": vecu,
+                        "ressenti": ressenti or "",
                         "commentaire": commentaire.strip(),
                     },
                 )
@@ -101,18 +155,18 @@ def _render_add_form(df: pd.DataFrame):
                     "disc_choice",
                     "disc_adresse_manuelle",
                     "disc_commentaire",
-                    "disc_note",
+                    "disc_ressenti",
                 ]:
                     st.session_state.pop(key, None)
-                st.success(f"« {nom} » ajouté !")
+                st.success(f"« {nom} » posé sur ta carte !")
                 st.rerun()
 
 
-def _render_edit_section(df: pd.DataFrame):
+def _render_edit_section(user: dict, df: pd.DataFrame):
     if df.empty:
         return
 
-    with st.expander("✏️ Modifier une découverte", expanded=False):
+    with st.expander("✏️ Modifier un rep'r", expanded=False):
         display_df = df.sort_values("date", ascending=False)
         options = display_df["id"].tolist()
 
@@ -131,11 +185,11 @@ def _render_edit_section(df: pd.DataFrame):
                 value=row["date"].date() if pd.notna(row["date"]) else date.today(),
                 key=f"edit_date_{selected_id}",
             )
-            categorie_actuelle = row["categorie"] if row["categorie"] in ALL_CATEGORIES else ALL_CATEGORIES[0]
+            categorie_actuelle = row["categorie"] if row["categorie"] in CATEGORIES else CATEGORIES[0]
             edit_categorie = c2.selectbox(
                 "Catégorie",
-                ALL_CATEGORIES,
-                index=ALL_CATEGORIES.index(categorie_actuelle),
+                CATEGORIES,
+                index=CATEGORIES.index(categorie_actuelle),
                 format_func=lambda c: f"{icon_for(c)} {c}",
                 key=f"edit_cat_{selected_id}",
             )
@@ -146,19 +200,24 @@ def _render_edit_section(df: pd.DataFrame):
                 key=f"edit_adresse_{selected_id}",
                 help="Si tu changes l'adresse, les coordonnées sont recalculées automatiquement à l'enregistrement.",
             )
-            c3, c4 = st.columns(2)
-            statut_actuel = row["statut"] if row["statut"] in STATUTS else STATUTS[0]
-            edit_statut = c3.selectbox(
-                "Statut", STATUTS, index=STATUTS.index(statut_actuel), key=f"edit_statut_{selected_id}"
+
+            edit_mode = st.segmented_control(
+                "Statut", ["Vécu", "Envie"],
+                default="Vécu" if bool(row["vecu"]) else "Envie",
+                key=f"edit_mode_{selected_id}",
             )
-            note_actuelle = int(row["note"]) if pd.notna(row["note"]) else 0
-            edit_note = c4.slider(
-                "Note (/5)", min_value=0, max_value=5, value=note_actuelle, key=f"edit_note_{selected_id}"
-            )
-            edit_commentaire = st.text_area(
-                "Commentaire",
+            edit_vecu = edit_mode == "Vécu"
+            edit_ressenti = None
+            if edit_vecu:
+                ressenti_actuel = row["ressenti"] if row["ressenti"] in RESSENTI_IDS else None
+                edit_ressenti = st.pills(
+                    "Ton ressenti", RESSENTI_IDS, format_func=ressenti_pill_label,
+                    default=ressenti_actuel, key=f"edit_ressenti_{selected_id}",
+                )
+
+            edit_commentaire = st.text_input(
+                "Une ligne pour t'en souvenir",
                 value=row["commentaire"] if pd.notna(row["commentaire"]) else "",
-                height=80,
                 key=f"edit_commentaire_{selected_id}",
             )
             submitted = st.form_submit_button("💾 Enregistrer les modifications")
@@ -173,8 +232,8 @@ def _render_edit_section(df: pd.DataFrame):
                         resultats = geocoding.search_places(edit_adresse) if edit_adresse.strip() else []
                         lat, lon = (resultats[0]["lat"], resultats[0]["lon"]) if resultats else (None, None)
 
-                    update_discovery_entry(
-                        DISCOVERIES_PATH,
+                    db.update_discovery(
+                        user["id"],
                         selected_id,
                         {
                             "date": edit_date.isoformat(),
@@ -183,8 +242,8 @@ def _render_edit_section(df: pd.DataFrame):
                             "adresse": edit_adresse.strip(),
                             "lat": lat,
                             "lon": lon,
-                            "statut": edit_statut,
-                            "note": edit_note if edit_note > 0 else "",
+                            "vecu": edit_vecu,
+                            "ressenti": edit_ressenti or "",
                             "commentaire": edit_commentaire.strip(),
                         },
                     )
@@ -194,29 +253,33 @@ def _render_edit_section(df: pd.DataFrame):
 
 def _render_stats(df: pd.DataFrame):
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Découvertes", len(df))
-    c2.metric("Lieux", int(df["categorie"].isin(PLACE_CATEGORIES).sum()))
-    c3.metric(
-        "Livres/films terminés",
-        int(((df["categorie"].isin(MEDIA_CATEGORIES)) & (df["statut"] == "fait")).sum()),
-    )
-    note_moyenne = df["note"].mean()
-    c4.metric("Note moyenne", f"{note_moyenne:.1f}/5" if pd.notna(note_moyenne) else "—")
+    c1.metric("Rep'rs posés", len(df))
+    c2.metric("Vécu", int(df["vecu"].sum()))
+    c3.metric("Envie", int((~df["vecu"]).sum()))
+    c4.metric("Coups de cœur", int((df["ressenti"] == "coeur").sum()))
 
 
 def _render_filters(df: pd.DataFrame) -> pd.DataFrame:
     c1, c2, c3 = st.columns([2, 2, 3])
     categories_selectionnees = c1.multiselect(
-        "Catégories", ALL_CATEGORIES, key="filter_categories", format_func=lambda c: f"{icon_for(c)} {c}"
+        "Catégories", CATEGORIES, key="filter_categories", format_func=lambda c: f"{icon_for(c)} {c}"
     )
-    statut_selectionne = c2.selectbox("Statut", ["Tous"] + STATUTS, key="filter_statut")
+    mode_filtre = c2.segmented_control("Statut", ["Tous", "Vécu", "Envie"], default="Tous", key="filter_mode")
     recherche = c3.text_input("Recherche (titre ou adresse)", key="filter_recherche")
+
+    ressentis_selectionnes = st.multiselect(
+        "Ressenti", RESSENTI_IDS, key="filter_ressentis", format_func=ressenti_pill_label
+    )
 
     filtered = df
     if categories_selectionnees:
         filtered = filtered[filtered["categorie"].isin(categories_selectionnees)]
-    if statut_selectionne != "Tous":
-        filtered = filtered[filtered["statut"] == statut_selectionne]
+    if mode_filtre == "Vécu":
+        filtered = filtered[filtered["vecu"]]
+    elif mode_filtre == "Envie":
+        filtered = filtered[~filtered["vecu"]]
+    if ressentis_selectionnes:
+        filtered = filtered[filtered["ressenti"].isin(ressentis_selectionnes)]
     if recherche.strip():
         q = recherche.strip().lower()
         filtered = filtered[
@@ -226,36 +289,32 @@ def _render_filters(df: pd.DataFrame) -> pd.DataFrame:
     return filtered
 
 
-def _render_card(row: pd.Series):
+def _render_card(user: dict, row: pd.Series):
     categorie = row["categorie"]
     with st.container(border=True):
         st.markdown(f"#### {icon_for(categorie)} {row['titre']}")
         st.caption(categorie)
 
         if isinstance(row.get("adresse"), str) and row["adresse"].strip():
-            st.write(f"📍 {row['adresse']}")
-            if pd.notna(row.get("lat")) and pd.notna(row.get("lon")):
-                maps_url = f"https://www.google.com/maps/search/?api=1&query={row['lat']},{row['lon']}"
-                st.markdown(f"[Voir sur Google Maps]({maps_url})")
+            st.markdown(f"{icon_for(categorie)} [{row['adresse']}]({_maps_url(row['adresse'], row.get('lat'), row.get('lon'))})")
 
-        note = row.get("note")
-        if pd.notna(note) and note:
-            st.write("⭐" * int(note) + "☆" * (5 - int(note)))
-
-        st.caption(f"Statut : {row['statut']}")
+        st.markdown(_ressenti_badge_html(bool(row.get("vecu")), row.get("ressenti")), unsafe_allow_html=True)
 
         if isinstance(row.get("commentaire"), str) and row["commentaire"].strip():
             st.write(row["commentaire"])
 
-        c1, c2 = st.columns(2)
-        share_key = f"share_open_{row['id']}"
-        if c1.button("📤 Partager", key=f"share_btn_{row['id']}"):
-            st.session_state[share_key] = not st.session_state.get(share_key, False)
-        if c2.button("🗑️ Supprimer", key=f"del_btn_{row['id']}"):
-            delete_discovery_entry(DISCOVERIES_PATH, row["id"])
+        c1, c2, c3 = st.columns(3)
+        export_key = f"export_open_{row['id']}"
+        send_key = f"send_open_{row['id']}"
+        if c1.button("💾 Exporter", key=f"export_btn_{row['id']}"):
+            st.session_state[export_key] = not st.session_state.get(export_key, False)
+        if c2.button("✉️ Envoyer", key=f"send_btn_{row['id']}"):
+            st.session_state[send_key] = not st.session_state.get(send_key, False)
+        if c3.button("🗑️ Supprimer", key=f"del_btn_{row['id']}"):
+            db.delete_discovery(user["id"], row["id"])
             st.rerun()
 
-        if st.session_state.get(share_key):
+        if st.session_state.get(export_key):
             png_bytes = share_card.generate_share_card(row.to_dict())
             st.image(png_bytes, width="stretch")
             st.download_button(
@@ -266,82 +325,62 @@ def _render_card(row: pd.Series):
                 key=f"dl_btn_{row['id']}",
             )
 
+        if st.session_state.get(send_key):
+            with st.form(f"send_form_{row['id']}"):
+                to_email = st.text_input("Email du destinataire (doit déjà avoir un compte)", key=f"send_email_{row['id']}")
+                if st.form_submit_button("Envoyer"):
+                    try:
+                        db.share_discovery(user, to_email, row.to_dict())
+                    except ValueError as exc:
+                        st.error(str(exc))
+                    else:
+                        st.session_state[send_key] = False
+                        st.success(f"Fiche envoyée à {to_email.strip()} !")
+                        st.rerun()
 
-def _render_grid(df: pd.DataFrame):
+
+def _render_grid(user: dict, df: pd.DataFrame):
     if df.empty:
-        st.info("Aucune découverte ne correspond à ces filtres.")
+        st.info("Aucun rep'r ne correspond à ces filtres.")
         return
 
     display_df = df.sort_values("date", ascending=False)
     cols = st.columns(3)
     for i, (_, row) in enumerate(display_df.iterrows()):
         with cols[i % 3]:
-            _render_card(row)
+            _render_card(user, row)
+
+
+def _hex_to_rgb(hex_color: str) -> list[int]:
+    hex_color = hex_color.lstrip("#")
+    return [int(hex_color[i : i + 2], 16) for i in (0, 2, 4)]
 
 
 def _render_map(df: pd.DataFrame):
-    place_df = df[df["categorie"].isin(PLACE_CATEGORIES)].dropna(subset=["lat", "lon"])
+    place_df = df.dropna(subset=["lat", "lon"]).copy()
     if place_df.empty:
         return
-    st.subheader("🗺️ Carte de mes lieux")
-    st.map(place_df[["lat", "lon"]])
+    st.subheader("🗺️ Carte de mes rep'rs")
+    place_df["color"] = place_df.apply(
+        lambda r: _hex_to_rgb(ressenti_color(r["ressenti"])) if r["vecu"] and r["ressenti"] else [154, 165, 177],
+        axis=1,
+    )
+    st.map(place_df[["lat", "lon", "color"]], color="color")
 
 
-def _send_chat_message(chat_key: str, titre: str, media_type: str, statut: str, user_text: str):
-    st.session_state[chat_key].append({"role": "user", "content": user_text})
-    with st.spinner("L'agent réfléchit…"):
-        try:
-            reply = ai_chat.chat_about_title(titre, media_type, statut, st.session_state[chat_key])
-            st.session_state[chat_key].append({"role": "assistant", "content": reply})
-        except Exception as exc:
-            st.session_state[chat_key].append({"role": "assistant", "content": f"⚠️ Erreur : {exc}"})
+def render(user: dict):
+    theme.render_wordmark()
+    st.caption("Un carnet d'adresses privé, sans réseau social ni pub.")
 
+    _render_inbox(user)
 
-def _render_ai_chat(media_df: pd.DataFrame):
-    st.subheader("🤖 Résumé & questions sur un livre ou un film")
+    df = db.fetch_discoveries(user["id"])
 
-    if not ai_chat.is_configured():
-        st.warning(
-            "Clé API OpenAI manquante. Définis `OPENAI_API_KEY` dans `.env` pour discuter "
-            "d'un livre ou d'un film avec l'agent."
-        )
-        return
-
-    display_df = media_df.sort_values("date", ascending=False)
-    titres = display_df["titre"].tolist()
-    titre_sel = st.selectbox("Titre", titres, key="chat_titre_select")
-    entry = display_df[display_df["titre"] == titre_sel].iloc[0]
-
-    chat_key = f"_chat_{titre_sel}"
-    st.session_state.setdefault(chat_key, [])
-
-    for msg in st.session_state[chat_key]:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    if not st.session_state[chat_key]:
-        if st.button(f"📝 Résumer « {titre_sel} »"):
-            _send_chat_message(chat_key, titre_sel, entry["categorie"].lower(), entry["statut"], "Fais-moi un résumé.")
-            st.rerun()
-
-    question = st.chat_input(f"Pose une question sur « {titre_sel} »…")
-    if question:
-        _send_chat_message(chat_key, titre_sel, entry["categorie"].lower(), entry["statut"], question)
-        st.rerun()
-
-
-def render():
-    st.header("📍 Mes découvertes")
-    st.caption("Restaurants, cafés, musées, livres, films… tout ce que tu découvres, au même endroit.")
-
-    migrate_legacy_media_log(LEGACY_MEDIA_PATH, DISCOVERIES_PATH)
-    df = parse_discoveries(DISCOVERIES_PATH)
-
-    _render_add_form(df)
-    _render_edit_section(df)
+    _render_add_form(user, df)
+    _render_edit_section(user, df)
 
     if df.empty:
-        st.info("Aucune découverte pour le moment. Ajoute la première ci-dessus.")
+        st.info("Aucun rep'r pour le moment. Pose le premier ci-dessus.")
         return
 
     st.divider()
@@ -350,21 +389,18 @@ def render():
     st.divider()
     st.subheader("🔎 Filtrer")
     filtered = _render_filters(df)
-    _render_grid(filtered)
+    _render_grid(user, filtered)
 
     _render_map(df)
-
-    media_df = df[df["categorie"].isin(MEDIA_CATEGORIES)]
-    if not media_df.empty:
-        st.divider()
-        _render_ai_chat(media_df)
 
     st.divider()
     st.subheader("Historique complet")
     display_all = df.sort_values("date", ascending=False).copy()
     display_all["date"] = display_all["date"].dt.strftime("%d/%m/%Y")
+    display_all["statut"] = display_all["vecu"].map({True: "Vécu", False: "Envie"})
+    display_all["ressenti"] = display_all["ressenti"].apply(ressenti_label)
     st.dataframe(
-        display_all[["date", "categorie", "titre", "adresse", "statut", "note", "commentaire"]],
+        display_all[["date", "categorie", "titre", "adresse", "statut", "ressenti", "commentaire"]],
         hide_index=True,
         width="stretch",
     )

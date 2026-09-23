@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rep'r — Fiche lieu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&amp;family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit;text-decoration:none}
+</style>
+</helmet>
+<div style="position: relative; width: 390px; height: 1180px; box-sizing: border-box; overflow: hidden; padding: 54px 24px 40px; display: flex; flex-direction: column; gap: 32px; background: {{t.bg}}; font-family: Inter, system-ui, sans-serif; color: {{t.ink}}">
+
+<div style="display: flex; align-items: center; justify-content: space-between; margin: 0 -8px">
+<a href="{{L.carte}}" aria-label="Retour" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: {{t.surface}}; border: 1px solid {{t.line}}; box-sizing: border-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a>
+<div style="display: flex; gap: 8px">
+<button type="button" aria-label="Modifier" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: {{t.surface}}; border: 1px solid {{t.line}}; color: {{t.ink}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg></button>
+<button type="button" aria-label="Plus d'options" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: {{t.surface}}; border: 1px solid {{t.line}}; color: {{t.ink}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+</div>
+</div>
+
+<div style="position: relative; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 13px; font-weight: 500; color: {{t.muted}}; letter-spacing: 0.08em; text-transform: uppercase">Bistrot · Paris 10ᵉ</span>
+<h1 style="margin: 0; max-width: 230px; font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 28px; line-height: 1.15; letter-spacing: -0.015em">Chez Odette</h1>
+<div style="display: flex; gap: 8px; margin-top: 4px">
+<span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; border-radius: 999px; background: {{t.surface}}; border: 1px solid {{t.line}}; font-size: 13px; font-weight: 600"><span style="width: 12px; height: 12px; border-radius: 999px; background: #E4572E"></span>Coup de cœur</span>
+<span style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; background: {{t.soft}}; font-size: 13px; color: {{t.muted}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Vécu</span>
+</div>
+<div aria-hidden="true" style="position: absolute; right: -4px; top: 0; width: 104px; height: 104px; box-sizing: border-box; border: 2px solid #E4572E; border-radius: 999px; transform: rotate(-10deg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #E4572E; opacity: 0.9">
+<div style="position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px; border: 1px dashed #E4572E; border-radius: 999px"></div>
+<span style="font-size: 9px; font-weight: 600; letter-spacing: 0.18em">VÉCU LE</span>
+<span style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 26px; line-height: 1">14</span>
+<span style="font-size: 9px; font-weight: 600; letter-spacing: 0.18em">SEPT. 2026</span>
+</div>
+</div>
+
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 14px; padding: 24px 20px 20px; background: {{t.surface}}; border-radius: 16px; border: 1px solid {{t.line}}">
+<span aria-hidden="true" style="font-family: Fraunces, Georgia, serif; font-size: 56px; line-height: 0.6; height: 24px; color: #E4572E">“</span>
+<blockquote style="margin: 0; font-family: Fraunces, Georgia, serif; font-style: italic; font-weight: 400; font-size: 22px; line-height: 1.4; letter-spacing: -0.005em">Le meilleur œuf mayo de ma vie. La patronne chante en servant — on revient pour le baba.</blockquote>
+<figcaption style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+<span style="font-size: 13px; color: {{t.muted}}">Ma note · 14 sept.</span>
+<button type="button" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 6px; border: 0; border-radius: 999px; background: {{t.soft}}; color: {{t.ink}}; font-family: Inter, system-ui, sans-serif; font-size: 13px; font-weight: 500"><span style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: {{t.btn}}; color: {{t.btnText}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></span>Mémo · 0:12</button>
+</figcaption>
+</figure>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600; color: {{t.muted}}; letter-spacing: 0.04em; text-transform: uppercase">Visites</h2>
+<div style="display: flex; align-items: center; gap: 12px">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+<span style="font-size: 15px">Dimanche 14 septembre 2026</span>
+</div>
+<span style="font-size: 13px; color: {{t.muted}}; padding-left: 32px">2ᵉ visite · la première le 3 mai 2026</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600; color: {{t.muted}}; letter-spacing: 0.04em; text-transform: uppercase">Occasions</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<span style="display: flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 999px; background: {{t.surface}}; border: 1px solid {{t.line}}; font-size: 15px">en amoureux</span>
+<span style="display: flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 999px; background: {{t.surface}}; border: 1px solid {{t.line}}; font-size: 15px">avec les parents</span>
+<button type="button" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: transparent; border: 1px dashed {{t.muted}}; color: {{t.muted}}; font-family: Inter, system-ui, sans-serif; font-size: 15px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Ajouter</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600; color: {{t.muted}}; letter-spacing: 0.04em; text-transform: uppercase">Photos</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<div style="height: 108px; border-radius: 16px; background: {{t.photo1}}; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box; color: {{t.photoText}}; font-size: 12px">Photo 1</div>
+<div style="height: 108px; border-radius: 16px; background: {{t.photo2}}; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box; color: {{t.photoText}}; font-size: 12px">Photo 2</div>
+<button type="button" aria-label="Ajouter une photo" style="height: 108px; border-radius: 16px; border: 1px dashed {{t.muted}}; background: transparent; color: {{t.muted}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-family: Inter, system-ui, sans-serif; font-size: 13px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Ajouter</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600; color: {{t.muted}}; letter-spacing: 0.04em; text-transform: uppercase">Infos pratiques</h2>
+<div style="display: flex; flex-direction: column; background: {{t.surface}}; border: 1px solid {{t.line}}; border-radius: 16px">
+<div style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-bottom: 1px solid {{t.line}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span style="font-size: 15px">12 rue des Vinaigriers, 75010 Paris</span></div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px; border-bottom: 1px solid {{t.line}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="font-size: 15px">Ouvert · ferme à 23 h</span></div>
+<div style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 16px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span style="font-size: 15px">[TÉLÉPHONE]</span></div>
+</div>
+<button type="button" style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 52px; border-radius: 999px; border: 1.5px solid {{t.ink}}; background: transparent; color: {{t.ink}}; font-family: Inter, system-ui, sans-serif; font-size: 15px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</button>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.theme ?? 'light') === 'dark';
+    const T = {
+      light:{bg:'#F6F3EC',surface:'#FFFFFF',ink:'#1D2426',muted:'#6E6A63',line:'#E6E1D6',soft:'#ECE8DF',btn:'#1D2426',btnText:'#F6F3EC',photo1:'#E2D6C3',photo2:'#D6DCD2',photoText:'#6E6A63'},
+      dark:{bg:'#141718',surface:'#1E2224',ink:'#F1EDE4',muted:'#A39E95',line:'#2E3336',soft:'#262B2E',btn:'#F1EDE4',btnText:'#141718',photo1:'#3A342C',photo2:'#2D3530',photoText:'#A39E95'}
+    };
+    const t = dark ? T.dark : T.light;
+    const L = { carte: dark ? 'MainSombre.dc.html' : 'Main.dc.html' };
+    return { t, L };
+  }
+}
+</script>
+</body>
+</html>

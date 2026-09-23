@@ -1,4 +1,4 @@
-"""Point d'entrée du dashboard personnel."""
+"""Point d'entrée de Rep'r."""
 import os
 import sys
 
@@ -13,45 +13,23 @@ sys.path.insert(0, PROJECT_ROOT)
 # Charge les secrets locaux (ex. OPENAI_API_KEY) depuis .env, jamais versionné.
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-from app.modules import agenda, bucket_list, discoveries, finances, sport  # noqa: E402
+from app.modules import discoveries  # noqa: E402
+from app.utils import auth, theme  # noqa: E402
 
-st.set_page_config(page_title="Dashboard Perso", page_icon="🏠", layout="wide")
-
-PAGES = {
-    "🏠 Accueil": None,
-    "📅 Agenda": agenda,
-    "💶 Finances": finances,
-    "🏃 Sport": sport,
-    "📍 Mes découvertes": discoveries,
-    "🪣 Bucket list": bucket_list,
-}
-
-
-def render_home():
-    st.header("🏠 Dashboard personnel")
-    st.write(
-        "Bienvenue ! Utilise le menu à gauche pour naviguer entre tes suivis : "
-        "**Agenda**, **Finances**, **Sport**, **Mes découvertes**."
-    )
-    st.info(
-        "Les données sont lues depuis le dossier `data/`. Dépose tes exports "
-        "(Strava, relevés bancaires, calendrier `.ics`) pour remplacer les données "
-        "d'exemple, puis recharge la page."
-    )
+st.set_page_config(page_title="Rep'r", page_icon="📍", layout="wide")
+theme.inject_css()
 
 
 def main():
-    st.sidebar.title("📊 Dashboard Perso")
-    choice = st.sidebar.radio("Navigation", list(PAGES.keys()))
+    user = auth.render_auth_gate()
+    if user is None:
+        return
 
-    module = PAGES[choice]
-    if module is None:
-        render_home()
-    else:
-        module.render()
+    auth.render_logout_button()
+    discoveries.render(user)
 
     st.sidebar.divider()
-    st.sidebar.caption("Toutes les données restent en local, dans le dossier `data/`.")
+    st.sidebar.caption("Chacun ne voit que ses propres rep'rs.")
 
 
 if __name__ == "__main__":
