@@ -1,8 +1,10 @@
 # Dashboard Perso
 
 Dashboard personnel local (Streamlit) qui centralise 4 suivis : agenda, finances,
-sport et lectures/films. Toutes les données restent en local dans `data/` —
-aucun appel réseau externe.
+sport et mes découvertes (lieux, livres, films). Toutes les données restent en
+local dans `data/`. Seule exception : l'onglet Mes découvertes interroge l'API
+publique Nominatim (OpenStreetMap) pour retrouver l'adresse d'un lieu à partir
+de son nom — aucune clé API requise.
 
 ## Installation
 
@@ -32,10 +34,10 @@ que l'app soit testable directement. Remplace-les par tes propres exports :
 | `data/strava/activities.csv` | Strava > Réglages > Mon compte > Télécharger ou supprimer vos données (bulk export) |
 | `data/banque/*.csv` | Ton (ou tes) relevé(s) bancaire(s) exportés en CSV. Tu peux déposer plusieurs fichiers, un par mois par exemple |
 | `data/calendrier/export.ics` | App Calendrier (macOS) : clic droit sur ton calendrier > Exporter, ou export iCloud |
-| `data/media_log.csv` | Pas d'export : utilise le formulaire "➕ Ajouter une entrée" dans l'onglet Lectures/Films, ou édite le CSV à la main |
+| `data/decouvertes.csv` | Pas d'export : utilise le formulaire "➕ Ajouter une découverte" dans l'onglet Mes découvertes, ou édite le CSV à la main. Un ancien `data/media_log.csv` (livres/films) est migré automatiquement au premier lancement |
 
 Il suffit de déposer les nouveaux fichiers dans les mêmes dossiers (même nom
-pour `activities.csv`, `export.ics` et `media_log.csv` ; n'importe quel nom de
+pour `activities.csv`, `export.ics` et `decouvertes.csv` ; n'importe quel nom de
 fichier `.csv` fonctionne dans `data/banque/`) puis de recharger la page
 Streamlit (touche `R`, ou relancer l'app).
 

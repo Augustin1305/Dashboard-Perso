@@ -13,7 +13,7 @@ sys.path.insert(0, PROJECT_ROOT)
 # Charge les secrets locaux (ex. OPENAI_API_KEY) depuis .env, jamais versionné.
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-from app.modules import agenda, bucket_list, finances, media, sport  # noqa: E402
+from app.modules import agenda, bucket_list, discoveries, finances, sport  # noqa: E402
 
 st.set_page_config(page_title="Dashboard Perso", page_icon="🏠", layout="wide")
 
@@ -22,7 +22,7 @@ PAGES = {
     "📅 Agenda": agenda,
     "💶 Finances": finances,
     "🏃 Sport": sport,
-    "📚 Lectures / Films": media,
+    "📍 Mes découvertes": discoveries,
     "🪣 Bucket list": bucket_list,
 }
 
@@ -31,7 +31,7 @@ def render_home():
     st.header("🏠 Dashboard personnel")
     st.write(
         "Bienvenue ! Utilise le menu à gauche pour naviguer entre tes suivis : "
-        "**Agenda**, **Finances**, **Sport**, **Lectures / Films**."
+        "**Agenda**, **Finances**, **Sport**, **Mes découvertes**."
     )
     st.info(
         "Les données sont lues depuis le dossier `data/`. Dépose tes exports "

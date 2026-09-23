@@ -26,7 +26,7 @@ def is_configured() -> bool:
 
 
 def _system_prompt(media_type: str, titre: str, statut: str) -> str:
-    if statut == "terminé" or statut == "termine":
+    if statut == "fait":
         spoiler_note = "L'utilisateur a terminé cette œuvre : les spoilers sont autorisés si utiles."
     else:
         spoiler_note = (

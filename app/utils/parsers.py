@@ -157,6 +157,32 @@ def parse_all_releves(folder: str) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True).sort_values("date").reset_index(drop=True)
 
 
+def update_transaction_category(
+    folder: str, source_fichier: str, date, libelle: str, montant: float, new_categorie: str
+) -> None:
+    """Fixe manuellement la catégorie d'une transaction précise dans son fichier
+    source (date + libellé + montant identifient la ligne). Cet override est
+    prioritaire sur les règles de mots-clés (voir categorize.categorize_dataframe)."""
+    path = os.path.join(folder, source_fichier)
+    if not os.path.exists(path):
+        return
+
+    raw = pd.read_csv(path)
+    if "categorie" not in raw.columns:
+        raw["categorie"] = ""
+    raw["categorie"] = raw["categorie"].fillna("")
+
+    raw_dates = pd.to_datetime(raw["date"]).dt.date
+    target_date = pd.Timestamp(date).date()
+    mask = (
+        (raw_dates == target_date)
+        & (raw["libelle"] == libelle)
+        & (raw["montant"].round(2) == round(float(montant), 2))
+    )
+    raw.loc[mask, "categorie"] = new_categorie
+    raw.to_csv(path, index=False)
+
+
 # ---------------------------------------------------------------------------
 # Calendrier (.ics)
 # ---------------------------------------------------------------------------
@@ -201,58 +227,112 @@ def _empty_ics_df() -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# Media log
+# Découvertes (lieux physiques + livres/films)
 # ---------------------------------------------------------------------------
 
-MEDIA_COLUMNS = ["id", "date", "type", "titre", "statut", "note", "commentaire"]
+DISCOVERY_COLUMNS = [
+    "id",
+    "date",
+    "categorie",
+    "titre",
+    "adresse",
+    "lat",
+    "lon",
+    "statut",
+    "note",
+    "commentaire",
+]
+
+# Ancien format "Lectures / Films", conservé uniquement pour migrer l'historique
+# existant vers le nouveau carnet de découvertes.
+_LEGACY_MEDIA_COLUMNS = ["id", "date", "type", "titre", "statut", "note", "commentaire"]
+_LEGACY_TYPE_TO_CATEGORIE = {"livre": "Livre", "film": "Film"}
+_LEGACY_STATUT_TO_STATUT = {
+    "à voir": "à découvrir",
+    "a voir": "à découvrir",
+    "en cours": "en cours",
+    "terminé": "fait",
+    "termine": "fait",
+}
 
 
-def parse_media_log(path: str) -> pd.DataFrame:
+def migrate_legacy_media_log(legacy_path: str, discoveries_path: str) -> None:
+    """Convertit un ancien `media_log.csv` (livres/films) vers le nouveau format,
+    si le nouveau fichier n'existe pas encore. Ne fait rien sinon (pas d'écrasement).
+    """
+    if os.path.exists(discoveries_path) or not os.path.exists(legacy_path):
+        return
+
+    legacy = pd.read_csv(legacy_path)
+    for col in _LEGACY_MEDIA_COLUMNS:
+        if col not in legacy.columns:
+            legacy[col] = None
+
+    migrated = pd.DataFrame(columns=DISCOVERY_COLUMNS)
+    migrated["id"] = legacy["id"]
+    migrated["date"] = legacy["date"]
+    migrated["categorie"] = legacy["type"].map(_LEGACY_TYPE_TO_CATEGORIE).fillna("Autre lieu")
+    migrated["titre"] = legacy["titre"]
+    migrated["adresse"] = ""
+    migrated["lat"] = None
+    migrated["lon"] = None
+    migrated["statut"] = (
+        legacy["statut"].astype(str).str.strip().str.lower().map(_LEGACY_STATUT_TO_STATUT).fillna("à découvrir")
+    )
+    migrated["note"] = legacy["note"]
+    migrated["commentaire"] = legacy["commentaire"]
+
+    write_discoveries(discoveries_path, migrated)
+
+
+def parse_discoveries(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
-        return pd.DataFrame(columns=MEDIA_COLUMNS)
+        return pd.DataFrame(columns=DISCOVERY_COLUMNS)
 
     df = pd.read_csv(path)
-    for col in MEDIA_COLUMNS:
+    for col in DISCOVERY_COLUMNS:
         if col not in df.columns:
             df[col] = None
 
-    # Backfill des identifiants stables pour les entrées créées avant l'ajout
-    # de l'édition (nécessaire pour pouvoir modifier une ligne de façon fiable).
     missing_id = df["id"].isna() | (df["id"].astype(str).str.strip() == "")
     if missing_id.any():
         df.loc[missing_id, "id"] = [uuid.uuid4().hex[:8] for _ in range(int(missing_id.sum()))]
-        write_media_log(path, df[MEDIA_COLUMNS])
+        write_discoveries(path, df[DISCOVERY_COLUMNS])
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df["note"] = pd.to_numeric(df["note"], errors="coerce")
-    return df[MEDIA_COLUMNS]
+    df["lat"] = pd.to_numeric(df["lat"], errors="coerce")
+    df["lon"] = pd.to_numeric(df["lon"], errors="coerce")
+    return df[DISCOVERY_COLUMNS]
 
 
-def write_media_log(path: str, df: pd.DataFrame) -> None:
-    """Réécrit le fichier media_log en entier (utilisé après une modification)."""
+def write_discoveries(path: str, df: pd.DataFrame) -> None:
+    """Réécrit le fichier de découvertes en entier (utilisé après une modification)."""
     df = df.copy()
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
-    df[MEDIA_COLUMNS].to_csv(path, index=False)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    df[DISCOVERY_COLUMNS].to_csv(path, index=False)
 
 
-def append_media_entry(path: str, entry: dict) -> None:
-    """Ajoute une ligne au CSV media_log, en créant le fichier si besoin."""
+def append_discovery_entry(path: str, entry: dict) -> None:
+    """Ajoute une découverte, en créant le fichier si besoin."""
     entry = {**entry}
     entry.setdefault("id", uuid.uuid4().hex[:8])
-    row = pd.DataFrame([entry], columns=MEDIA_COLUMNS)
+    row = pd.DataFrame([entry], columns=DISCOVERY_COLUMNS)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     file_exists = os.path.exists(path)
     row.to_csv(path, mode="a", header=not file_exists, index=False)
 
 
-def update_media_entry(path: str, entry_id: str, updated_fields: dict) -> None:
-    """Met à jour les champs d'une entrée existante (identifiée par son id).
+def update_discovery_entry(path: str, entry_id: str, updated_fields: dict) -> None:
+    """Met à jour les champs d'une découverte existante (identifiée par son id).
 
     Reconstruit la ligne plutôt que d'assigner en place : une colonne comme
     "note" est de dtype float64 (à cause des lignes sans note), et y écrire une
     chaîne vide via .loc lève un TypeError qui fait échouer toute la sauvegarde.
     """
-    df = parse_media_log(path)
+    df = parse_discoveries(path)
     mask = df["id"] == entry_id
     if not mask.any():
         return
@@ -264,4 +344,10 @@ def update_media_entry(path: str, entry_id: str, updated_fields: dict) -> None:
 
     df = df.drop(index=idx)
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
-    write_media_log(path, df)
+    write_discoveries(path, df)
+
+
+def delete_discovery_entry(path: str, entry_id: str) -> None:
+    df = parse_discoveries(path)
+    df = df[df["id"] != entry_id]
+    write_discoveries(path, df)
