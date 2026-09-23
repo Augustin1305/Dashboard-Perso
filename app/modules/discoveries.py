@@ -5,6 +5,7 @@ image et envoi d'une fiche à un autre utilisateur de l'app.
 from __future__ import annotations
 
 import re
+import zlib
 from datetime import date
 from urllib.parse import quote_plus
 
@@ -17,7 +18,6 @@ from app.utils.categories import (
     RESSENTI_IDS,
     icon_for,
     ressenti_color,
-    ressenti_label,
     ressenti_pill_label,
 )
 
@@ -38,10 +38,40 @@ def _maps_url(adresse: str | None, lat=None, lon=None) -> str | None:
     return None
 
 
-def _ressenti_badge_html(vecu: bool, ressenti: str | None) -> str:
+def _stable_rotation(entry_id: str, spread: int = 7) -> int:
+    """Angle de rotation déterministe (-spread..+spread) pour le tampon de
+    ressenti, façon carnet manuscrit — toujours le même pour une entrée
+    donnée (zlib.crc32, contrairement à hash() qui varie d'un process à
+    l'autre), mais varié d'une entrée à l'autre."""
+    return (zlib.crc32(entry_id.encode()) % (2 * spread + 1)) - spread
+
+
+def _mood_stamp_html(entry_id: str, vecu: bool, ressenti: str | None, size: int = 52) -> str:
     if vecu and ressenti:
-        return theme.render_ressenti_badge(ressenti_color(ressenti), ressenti_label(ressenti))
-    return theme.render_ressenti_badge(theme.MUTED, "Envie — pas encore testé", dashed=True)
+        return theme.render_mood_stamp(ressenti_color(ressenti), rotate=_stable_rotation(entry_id), size=size)
+    return theme.render_envie_pin(size=round(size * 0.55))
+
+
+def _header_row_html(icon: str, categorie: str, titre: str, stamp_html: str) -> str:
+    return f"""
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:{theme.MUTED}">{icon} {categorie}</span>
+        <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:20px;line-height:1.25;
+                     overflow-wrap:anywhere">{titre}</span>
+      </div>
+      {stamp_html}
+    </div>
+    """
+
+
+def _quote_html(commentaire: str) -> str:
+    return f"""
+    <div style="margin:10px 0;padding:12px 14px;background:{theme.SOFT};border-radius:12px">
+      <span style="font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:15px;
+                   line-height:1.4;color:{theme.INK}">{commentaire}</span>
+    </div>
+    """
 
 
 def _render_inbox(user: dict):
@@ -53,18 +83,20 @@ def _render_inbox(user: dict):
     for share in inbox:
         snapshot = share.get("snapshot") or {}
         categorie = snapshot.get("categorie") or "Autre lieu"
+        stamp = _mood_stamp_html(share["id"], bool(snapshot.get("vecu")), snapshot.get("ressenti"), size=44)
         with st.container(border=True):
-            st.markdown(f"#### {icon_for(categorie)} {snapshot.get('titre') or 'Sans titre'}")
+            st.markdown(
+                _header_row_html(icon_for(categorie), categorie, snapshot.get("titre") or "Sans titre", stamp),
+                unsafe_allow_html=True,
+            )
             st.caption(f"Envoyé par {share['from_email']}")
 
             adresse = snapshot.get("adresse")
             if isinstance(adresse, str) and adresse.strip():
                 st.markdown(f"{icon_for(categorie)} [{adresse}]({_maps_url(adresse, snapshot.get('lat'), snapshot.get('lon'))})")
 
-            st.markdown(_ressenti_badge_html(bool(snapshot.get("vecu")), snapshot.get("ressenti")), unsafe_allow_html=True)
-
             if snapshot.get("commentaire"):
-                st.write(snapshot["commentaire"])
+                st.markdown(_quote_html(snapshot["commentaire"]), unsafe_allow_html=True)
 
             c1, c2 = st.columns(2)
             if c1.button("➕ Ajouter à mes rep'rs", key=f"accept_{share['id']}"):
@@ -292,16 +324,14 @@ def _render_filters(df: pd.DataFrame) -> pd.DataFrame:
 def _render_card(user: dict, row: pd.Series):
     categorie = row["categorie"]
     with st.container(border=True):
-        st.markdown(f"#### {icon_for(categorie)} {row['titre']}")
-        st.caption(categorie)
+        stamp = _mood_stamp_html(row["id"], bool(row.get("vecu")), row.get("ressenti"))
+        st.markdown(_header_row_html(icon_for(categorie), categorie, row["titre"], stamp), unsafe_allow_html=True)
 
         if isinstance(row.get("adresse"), str) and row["adresse"].strip():
             st.markdown(f"{icon_for(categorie)} [{row['adresse']}]({_maps_url(row['adresse'], row.get('lat'), row.get('lon'))})")
 
-        st.markdown(_ressenti_badge_html(bool(row.get("vecu")), row.get("ressenti")), unsafe_allow_html=True)
-
         if isinstance(row.get("commentaire"), str) and row["commentaire"].strip():
-            st.write(row["commentaire"])
+            st.markdown(_quote_html(row["commentaire"]), unsafe_allow_html=True)
 
         c1, c2, c3 = st.columns(3)
         export_key = f"export_open_{row['id']}"
@@ -368,6 +398,93 @@ def _render_map(df: pd.DataFrame):
     st.map(place_df[["lat", "lon", "color"]], color="color")
 
 
+def _render_timeline_row(row: pd.Series):
+    day = row["date"].strftime("%d")
+    weekday = row["date"].strftime("%a").rstrip(".").capitalize()
+    stamp = _mood_stamp_html(row["id"], bool(row.get("vecu")), row.get("ressenti"), size=44)
+    note = row.get("commentaire") if isinstance(row.get("commentaire"), str) else ""
+    meta = row["adresse"] if isinstance(row.get("adresse"), str) and row["adresse"].strip() else row["categorie"]
+    note_html = (
+        f"""<span style="font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:14px;
+             color:{theme.INK};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{note}</span>"""
+        if note
+        else ""
+    )
+    st.markdown(
+        f"""
+        <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:10px">
+          <div style="width:36px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding-top:10px">
+            <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:19px;line-height:1">{day}</span>
+            <span style="font-size:10px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;
+                         color:{theme.MUTED};margin-top:2px">{weekday}</span>
+          </div>
+          <div style="flex-grow:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 14px;
+                      background:{theme.SURFACE};border-radius:16px;border:1px solid {theme.LINE}">
+            <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+              <span style="font-size:14px;font-weight:600;overflow-wrap:anywhere">{row['titre']}</span>
+              {note_html}
+              <span style="font-size:12px;color:{theme.MUTED};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{meta}</span>
+            </div>
+            {stamp}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_timeline(df: pd.DataFrame):
+    st.subheader("📖 Mon carnet")
+    timeline_df = df.dropna(subset=["date"]).sort_values("date", ascending=False).copy()
+    timeline_df["mois"] = timeline_df["date"].dt.to_period("M")
+    for mois, group in timeline_df.groupby("mois", sort=False):
+        mois_label = mois.to_timestamp().strftime("%B %Y").capitalize()
+        st.markdown(
+            f"""
+            <div style="display:flex;align-items:baseline;justify-content:space-between;
+                        padding-bottom:8px;margin:18px 0 12px;border-bottom:1px solid {theme.LINE}">
+              <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:17px">{mois_label}</span>
+              <span style="font-size:13px;color:{theme.MUTED}">{len(group)} rep'r{'s' if len(group) > 1 else ''}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        for _, row in group.iterrows():
+            _render_timeline_row(row)
+
+
+def _render_soon_teaser():
+    st.divider()
+    st.markdown(
+        f"""<span style="font-size:13px;font-weight:600;color:{theme.MUTED};letter-spacing:0.04em;
+             text-transform:uppercase">Bientôt dans Rep'r</span>""",
+        unsafe_allow_html=True,
+    )
+    tiles = [
+        ("Finances", "Budget et dépenses", "#3E7C59"),
+        ("Sport", "Séances et progrès", "#3A6EA5"),
+        ("Agenda", "Rendez-vous et rappels", "#7A5C99"),
+    ]
+    cols = st.columns(3)
+    for col, (name, description, color) in zip(cols, tiles):
+        col.markdown(
+            f"""
+            <div style="display:flex;flex-direction:column;gap:10px;padding:14px 12px;margin-top:8px;
+                        border-radius:16px;border:1px dashed {theme.LINE};background:rgba(255,255,255,0.5)">
+              <span style="display:block;width:32px;height:32px;border-radius:10px;background:{color};opacity:0.45"></span>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:{theme.MUTED}">{name}</span>
+                <span style="font-size:11px;color:{theme.MUTED}">{description}</span>
+              </div>
+              <span style="align-self:flex-start;height:20px;padding:0 8px;display:flex;align-items:center;
+                          border-radius:999px;background:{theme.BG};color:{theme.MUTED};font-size:10px;
+                          font-weight:600;letter-spacing:0.04em">BIENTÔT</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def render(user: dict):
     theme.render_wordmark()
     st.caption("Un carnet d'adresses privé, sans réseau social ni pub.")
@@ -394,13 +511,6 @@ def render(user: dict):
     _render_map(df)
 
     st.divider()
-    st.subheader("Historique complet")
-    display_all = df.sort_values("date", ascending=False).copy()
-    display_all["date"] = display_all["date"].dt.strftime("%d/%m/%Y")
-    display_all["statut"] = display_all["vecu"].map({True: "Vécu", False: "Envie"})
-    display_all["ressenti"] = display_all["ressenti"].apply(ressenti_label)
-    st.dataframe(
-        display_all[["date", "categorie", "titre", "adresse", "statut", "ressenti", "commentaire"]],
-        hide_index=True,
-        width="stretch",
-    )
+    _render_timeline(df)
+
+    _render_soon_teaser()
